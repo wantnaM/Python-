@@ -1,7 +1,19 @@
 import re
 import os
 import urllib.request
+import threading
+import time
 
+T = True
+class DownloadThread(threading.Thread):  # 继承父类threading.Thread
+    def __init__(self, threadID, name, wpcollection):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.wpcollection = wpcollection
+
+    def run(self):  # 把要执行的代码写到run函数里面 线程在创建后会直接运行run函数
+        downloadwp(self.wpcollection)
 
 def url_open(url):  # 打开网页
     req = urllib.request.Request(url)
@@ -11,7 +23,6 @@ def url_open(url):  # 打开网页
     html = response.read()
 
     return html
-
 
 # 获取该网页所有壁纸集合的网页和名称
 def get_wpcollection(url, count=0):
@@ -33,7 +44,6 @@ def get_wpcollection(url, count=0):
         wpcollection = wpcollection[0:count]
     return wpcollection
 
-
 def downloadwp(wpcollection):
     # 创建根目录
     root = os.getcwd()
@@ -52,12 +62,15 @@ def downloadwp(wpcollection):
         except:
             pass
         os.chdir(i[1])
-        wp_url = getwp(i[0])  # 获取壁纸的网页(36)
+        print(i[1] + " 已经开始下载...")
+        wp_url = getwp(i[0])  # 获取壁纸的网页
         for each in wp_url:  # 保存壁纸
+            if(T):
+                print("下载中止")
+                return
             save_img(each)
-
+        print(i[1] + " 下载完成。")
         os.chdir(root)
-
 
 def getwp(url):
     # 每张壁纸的网页集合
@@ -72,22 +85,31 @@ def getwp(url):
     wp_url.append(re.compile(wp_goal).findall(html))
     url_2 = url
     for i in page:
-        url_2 = url.replace('.shtml', '_' + str(i) + '.shtml')
+        url_2 = url.replace('.shtml', '_' + i + '.shtml')
         #获取当前网页的所有壁纸地址
         html = url_open(url_2).decode('utf-8')
         wp_url.append(re.compile(wp_goal).findall(html))
 
-    # 返回每张壁纸的网址
-    return wp_url
+    wp_result = []
+    for i in wp_url:
+        for each in i:
+            wp_result.append(each.split('?')[-1])  # 问号后面的是图片的网址
 
+    # 返回每张壁纸的网址
+    return wp_result
 
 def save_img(url):
     filename = url.split('/')[-1]
-    with open(filename, 'wb') as f:
-        img = url_open(url)
-        f.write(img)
+    urllib.request.urlretrieve(url, filename)
 
+def download(wpcollection):
+    DownloadThread(0, "download", wpcollection).start()
 
 if __name__ == '__main__':
     url = 'http://www.gamersky.com/ent/wp'
-    
+    wpcollection = get_wpcollection(url, 3)
+    download(wpcollection)
+    time.sleep(30)
+    T = False
+
+
