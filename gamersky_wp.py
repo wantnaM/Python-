@@ -60,23 +60,25 @@ def downloadwp(wpcollection):
 
 
 def getwp(url):
-    # 获取每张壁纸的网页
+    # 每张壁纸的网页集合
     wp_url = []
-    wp_url_2 = []
+    # 获取壁纸页数
+    html = url_open(url).decode('utf-8')
+    url_1 = url.replace(".shtml", "")
+    page_goal = r"<a href='" + url_1 + r"_(\d+).shtml'>"
+    page = re.compile(page_goal).findall(html)
+    #获取壁纸网页地址
+    wp_goal = r'<a target="_blank" href="(.+\.jpg)"><img'
+    wp_url.append(re.compile(wp_goal).findall(html))
     url_2 = url
-    for i in range(1, 7):  # 每周壁纸一般有6页,一页6张
-        if i != 1:
-            url_2 = url.replace('.shtml', '_' + str(i) + '.shtml')
+    for i in page:
+        url_2 = url.replace('.shtml', '_' + str(i) + '.shtml')
+        #获取当前网页的所有壁纸地址
         html = url_open(url_2).decode('utf-8')
-        goal = r'<a target="_blank" href="(.+\.jpg)"><img'
-        wp_url.append(re.compile(goal).findall(html))
-
-    for i in wp_url:
-        for each in i:
-            wp_url_2.append(each.split('?')[-1])  # 问号后面的是图片的网址
+        wp_url.append(re.compile(wp_goal).findall(html))
 
     # 返回每张壁纸的网址
-    return wp_url_2
+    return wp_url
 
 
 def save_img(url):
@@ -88,7 +90,4 @@ def save_img(url):
 
 if __name__ == '__main__':
     url = 'http://www.gamersky.com/ent/wp'
-    wpcollection = get_wpcollection(url,3)
-    print(wpcollection)
-    print(len(wpcollection))
-##    downloadwp(wpcollection)
+    
