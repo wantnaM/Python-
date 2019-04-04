@@ -3,17 +3,12 @@ import os
 import urllib.request
 import threading
 import time
+import sys
+from PyQt5.QtWidgets import QApplication, QMainWindow
+from gamesky_ui import Ui_MainWindow
 
-T = True
-class DownloadThread(threading.Thread):  # 继承父类threading.Thread
-    def __init__(self, threadID, name, wpcollection):
-        threading.Thread.__init__(self)
-        self.threadID = threadID
-        self.name = name
-        self.wpcollection = wpcollection
-
-    def run(self):  # 把要执行的代码写到run函数里面 线程在创建后会直接运行run函数
-        downloadwp(self.wpcollection)
+T = True    #下载进程标志位
+S = False   #下载开始标志位
 
 def url_open(url):  # 打开网页
     req = urllib.request.Request(url)
@@ -46,6 +41,7 @@ def get_wpcollection(url, count=0):
 
 def downloadwp(wpcollection):
     # 创建根目录
+    global T
     root = os.getcwd()
     root += r'\游民星空壁纸'
     try:
@@ -63,12 +59,14 @@ def downloadwp(wpcollection):
             pass
         os.chdir(i[1])
         print(i[1] + " 已经开始下载...")
+        if (T):
+            return
         wp_url = getwp(i[0])  # 获取壁纸的网页
         for each in wp_url:  # 保存壁纸
             if(T):
-                print("下载中止")
                 return
             save_img(each)
+            time.sleep(0.2)
         print(i[1] + " 下载完成。")
         os.chdir(root)
 
@@ -100,16 +98,72 @@ def getwp(url):
 
 def save_img(url):
     filename = url.split('/')[-1]
-    urllib.request.urlretrieve(url, filename)
+    if(not os.path.exists(filename)):
+        urllib.request.urlretrieve(url, filename)
 
 def download(wpcollection):
-    DownloadThread(0, "download", wpcollection).start()
+    threading.Thread(target=downloadwp, args=(wpcollection)).start()
+
+def getNewWp():
+    url = 'http://www.gamersky.com/ent/wp'
+    # html = url_open(url).decode('utf-8')
+    # goal = r'<a href="(.+)" target="_blank" title="(每周壁纸精选.+)">'
+    # a = re.compile(goal).findall(html)
+    # return a[0][1]
+    return url
+class mywindow(QMainWindow, Ui_MainWindow):
+    def __init__(self):
+        super(mywindow, self).__init__()
+        self.setupUi(self)
+        self.setFixedSize(self.width(), self.height())
+        self.showNewWp()
+
+
+
+    # 定义槽函数
+    def DownloadEvent(self):
+        global S
+        if(not S):
+            S = True
+            self.showtext('开始下载...')
+            count = self.wp_number.value()
+            self.showtext('下载' + str(count) + '期')
+            #下载
+            # url = 'http://www.gamersky.com/ent/wp'
+            # wpcollection = get_wpcollection(url, count)
+            # download(wpcollection)
+        else:
+            self.showtext("已经开始下载了")
+
+    def StopEvent(self):
+        global S
+        if(S):
+            global T
+            T = False
+            S = False
+            self.showtext('停止下载')
+        else:
+            self.showtext('还没有开始下载')
+
+
+    def showtext(self, text):
+        def _showtext(text):
+            self.download_edit.append(text)
+            self.cursor = self.download_edit.textCursor()
+            self.download_edit.moveCursor(self.cursor.End)
+
+        threading.Thread(target=_showtext, args=(text,)).start()
+
+
+    def showNewWp(self):
+        text = getNewWp()
+        self.new_wp.setText('最新：' + text)
 
 if __name__ == '__main__':
-    url = 'http://www.gamersky.com/ent/wp'
-    wpcollection = get_wpcollection(url, 3)
-    download(wpcollection)
-    time.sleep(30)
-    T = False
+    app = QApplication(sys.argv)
+    window = mywindow()
+    window.show()
+    sys.exit(app.exec_())
+    #print(getNewWp())
 
 
